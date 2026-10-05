@@ -1,0 +1,552 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#101314">
+  <title>Dhanush AI | Gemini Live</title>
+  <style>
+    :root {
+      color-scheme: dark;
+      --ink: #f2f4ef;
+      --muted: #aab2ad;
+      --surface: #171c1b;
+      --surface-raised: #202725;
+      --line: #343d39;
+      --mint: #a8f0c5;
+      --mint-dark: #133d2a;
+      --amber: #f5c77e;
+      --danger: #ffaaa0;
+      font-family: "Trebuchet MS", "Segoe UI", sans-serif;
+      font-synthesis: none;
+      text-rendering: optimizeLegibility;
+    }
+    * { box-sizing: border-box; }
+    body {
+      min-width: 320px;
+      min-height: 100vh;
+      margin: 0;
+      color: var(--ink);
+      background-color: #101314;
+      background-image: radial-gradient(ellipse at 50% 24%, #24302b 0%, #171d1b 36%, #101314 76%);
+    }
+    button { font: inherit; }
+    .shell {
+      width: min(100% - 32px, 720px);
+      min-height: 100vh;
+      margin: 0 auto;
+      padding: 42px 0 32px;
+      display: flex;
+      flex-direction: column;
+    }
+    header { text-align: center; animation: arrive 500ms ease-out both; }
+    h1 {
+      margin: 0;
+      font-size: clamp(30px, 8vw, 42px);
+      line-height: 1.12;
+      font-weight: 700;
+    }
+    .subtitle {
+      margin: 10px 0 0;
+      color: var(--muted);
+      font-size: 14px;
+    }
+    .stage {
+      min-height: 310px;
+      display: grid;
+      place-items: center;
+      position: relative;
+      animation: arrive 600ms 80ms ease-out both;
+    }
+    .orb-wrap { width: 202px; height: 202px; display: grid; place-items: center; position: relative; }
+    .orb-halo {
+      position: absolute;
+      width: 100%; height: 100%; border-radius: 50%;
+      border: 1px solid #a8f0c533;
+      box-shadow: 0 0 70px #81dbad20, inset 0 0 35px #81dbad0d;
+      transition: transform 300ms ease, border-color 300ms ease;
+    }
+    .orb {
+      width: 136px; height: 136px; border-radius: 50%;
+      background: radial-gradient(circle at 34% 28%, #dcffe9 0%, #a8f0c5 13%, #5da981 43%, #274b3a 76%, #1a2e25 100%);
+      box-shadow: 0 0 42px #91ebbb3b, inset -13px -18px 26px #0b211633, inset 8px 10px 18px #ffffff45;
+      animation: breathe 4s ease-in-out infinite;
+      transition: filter 250ms ease;
+    }
+    .is-live .orb-halo { transform: scale(1.11); border-color: #a8f0c588; }
+    .is-live .orb { animation-duration: 1.35s; filter: brightness(1.18); }
+    .is-speaking .orb-halo { transform: scale(1.2); }
+    .is-speaking .orb { animation-duration: 700ms; }
+    .status-line { display: flex; gap: 9px; align-items: center; justify-content: center; min-height: 25px; color: var(--muted); font-size: 14px; }
+    .status-dot { width: 8px; height: 8px; border-radius: 50%; background: #89948e; flex: 0 0 auto; }
+    .status-line[data-state="connecting"] .status-dot { background: var(--amber); animation: blink 900ms infinite alternate; }
+    .status-line[data-state="live"] .status-dot { background: var(--mint); box-shadow: 0 0 10px #a8f0c588; }
+    .status-line[data-state="error"] { color: var(--danger); }
+    .status-line[data-state="error"] .status-dot { background: var(--danger); }
+    .model-label { min-height: 19px; margin-top: 6px; text-align: center; color: #87918b; font-size: 12px; }
+    .controls { display: flex; justify-content: center; gap: 12px; margin: 0 0 30px; animation: arrive 600ms 140ms ease-out both; }
+    .control {
+      min-width: 132px; min-height: 48px; border: 1px solid var(--line); border-radius: 7px;
+      padding: 0 19px; display: inline-flex; justify-content: center; align-items: center; gap: 10px;
+      color: var(--ink); background: var(--surface-raised); cursor: pointer; transition: background 160ms ease, transform 160ms ease, border-color 160ms ease;
+    }
+    .control:hover:not(:disabled) { transform: translateY(-1px); border-color: #607167; }
+    .control:focus-visible { outline: 2px solid var(--mint); outline-offset: 3px; }
+    .control:disabled { opacity: .45; cursor: not-allowed; }
+    .control.start { color: #10251a; background: var(--mint); border-color: var(--mint); font-weight: 700; }
+    .control.start:hover:not(:disabled) { background: #c1f8d5; }
+    .control.stop { color: #ffd5cf; }
+    .control .icon { font-size: 16px; line-height: 1; }
+    .conversation {
+      flex: 1 0 190px; min-height: 190px; max-height: 310px; overflow-y: auto;
+      border-top: 1px solid var(--line); padding: 18px 3px 10px;
+      animation: arrive 600ms 200ms ease-out both;
+    }
+    .conversation-heading { margin: 0 0 14px; color: #7f8a83; font-size: 11px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; }
+    .empty { margin: 0; color: #89938d; font-size: 14px; }
+    .entry { padding: 0 0 15px; animation: arrive 200ms ease-out both; }
+    .entry-label { display: block; margin-bottom: 4px; color: var(--mint); font-size: 12px; font-weight: 700; }
+    .entry.ai .entry-label { color: var(--amber); }
+    .entry-text { margin: 0; color: #e4e9e4; font-size: 14px; line-height: 1.55; white-space: pre-wrap; overflow-wrap: anywhere; }
+    .error-note { margin: 10px auto 0; max-width: 540px; color: var(--danger); text-align: center; font-size: 13px; line-height: 1.5; }
+    @keyframes breathe { 0%, 100% { transform: scale(.97); } 50% { transform: scale(1.035); } }
+    @keyframes blink { to { opacity: .35; } }
+    @keyframes arrive { from { opacity: 0; transform: translateY(9px); } to { opacity: 1; transform: translateY(0); } }
+    @media (max-width: 480px) {
+      .shell { width: min(100% - 28px, 720px); padding-top: 32px; }
+      .stage { min-height: 270px; }
+      .orb-wrap { width: 178px; height: 178px; }
+      .orb { width: 122px; height: 122px; }
+      .control { min-width: 0; flex: 1; max-width: 170px; }
+      .conversation { max-height: 34vh; }
+    }
+    @media (prefers-reduced-motion: reduce) {
+      *, *::before, *::after { scroll-behavior: auto !important; animation-duration: .01ms !important; animation-iteration-count: 1 !important; transition-duration: .01ms !important; }
+    }
+  </style>
+</head>
+<body>
+  <main class="shell">
+    <header>
+      <h1>Dhanush AI</h1>
+      <p class="subtitle">Gemini Live <span aria-hidden="true">&#8226;</span> English + Telugu</p>
+    </header>
+
+    <section class="stage" aria-label="Voice agent status">
+      <div class="orb-wrap" id="orbWrap" aria-hidden="true">
+        <div class="orb-halo"></div>
+        <div class="orb"></div>
+      </div>
+    </section>
+
+    <div class="status-line" id="statusLine" data-state="ready" role="status" aria-live="polite">
+      <span class="status-dot" aria-hidden="true"></span>
+      <span id="statusText">Ready</span>
+    </div>
+    <div class="model-label" id="modelLabel" aria-live="polite"></div>
+    <p class="error-note" id="errorNote" role="alert" hidden></p>
+
+    <div class="controls">
+      <button class="control start" id="startButton" type="button">
+        <span class="icon" aria-hidden="true">&#127908;</span> Start
+      </button>
+      <button class="control stop" id="stopButton" type="button" disabled>
+        <span class="icon" aria-hidden="true">&#9632;</span> Stop
+      </button>
+    </div>
+
+    <section class="conversation" id="conversation" aria-label="Conversation transcript" aria-live="polite">
+      <h2 class="conversation-heading">Conversation</h2>
+      <p class="empty" id="emptyState">Your conversation will appear here.</p>
+    </section>
+  </main>
+
+  <script>
+    (() => {
+      const startButton = document.getElementById('startButton');
+      const stopButton = document.getElementById('stopButton');
+      const statusLine = document.getElementById('statusLine');
+      const statusText = document.getElementById('statusText');
+      const modelLabel = document.getElementById('modelLabel');
+      const errorNote = document.getElementById('errorNote');
+      const conversation = document.getElementById('conversation');
+      const emptyState = document.getElementById('emptyState');
+      const orbWrap = document.getElementById('orbWrap');
+      const systemInstruction = `You are Dhanush AI, a realtime voice assistant.
+
+Understand English and Telugu.
+
+If the user speaks Telugu, respond naturally in Telugu.
+If the user speaks English, respond naturally in English.
+If the user mixes Telugu and English, respond naturally in the same mixed style.
+
+The user may switch languages at any time.
+
+Keep answers concise and natural.
+Speak like a helpful realtime voice assistant.
+Do not pretend to be human.
+Do not claim to have performed an action unless you actually performed it.`;
+
+      let sessionId = 0;
+      let activeSocket = null;
+      let audioContext = null;
+      let microphoneStream = null;
+      let microphoneSource = null;
+      let microphoneProcessor = null;
+      let silentGain = null;
+      let scheduledAudio = new Set();
+      let scheduledUntil = 0;
+      let sessionReady = false;
+      let fallbackInProgress = false;
+      let transcriptEntry = null;
+
+      function setStatus(state, text) {
+        statusLine.dataset.state = state;
+        statusText.textContent = text;
+        orbWrap.classList.toggle('is-live', state === 'live' || state === 'connecting');
+      }
+
+      function addTranscript(label, text, isAi, allowEmpty = false) {
+        const value = String(text || '').trim();
+        if (!value && !allowEmpty) return;
+        if (emptyState.isConnected) emptyState.remove();
+        const entry = document.createElement('article');
+        entry.className = `entry${isAi ? ' ai' : ''}`;
+        const name = document.createElement('span');
+        name.className = 'entry-label';
+        name.textContent = label;
+        const message = document.createElement('p');
+        message.className = 'entry-text';
+        message.textContent = value;
+        entry.append(name, message);
+        conversation.append(entry);
+        conversation.scrollTop = conversation.scrollHeight;
+        return message;
+      }
+
+      function clearPlayback() {
+        for (const source of scheduledAudio) {
+          try { source.stop(); } catch (_) { /* Already ended. */ }
+        }
+        scheduledAudio.clear();
+        scheduledUntil = audioContext ? audioContext.currentTime : 0;
+        orbWrap.classList.remove('is-speaking');
+      }
+
+      function closeSocket(socket) {
+        if (!socket) return;
+        socket.onopen = null;
+        socket.onmessage = null;
+        socket.onerror = null;
+        socket.onclose = null;
+        if (socket.readyState < WebSocket.CLOSING) socket.close(1000, 'Session ended');
+      }
+
+      async function releaseMedia() {
+        clearPlayback();
+        if (microphoneProcessor) microphoneProcessor.disconnect();
+        if (microphoneSource) microphoneSource.disconnect();
+        if (silentGain) silentGain.disconnect();
+        microphoneProcessor = null;
+        microphoneSource = null;
+        silentGain = null;
+        if (microphoneStream) microphoneStream.getTracks().forEach(track => track.stop());
+        microphoneStream = null;
+        if (audioContext && audioContext.state !== 'closed') await audioContext.close().catch(() => {});
+        audioContext = null;
+      }
+
+      function endSession(message = 'Ready', error = false) {
+        sessionId += 1;
+        sessionReady = false;
+        fallbackInProgress = false;
+        const socket = activeSocket;
+        activeSocket = null;
+        closeSocket(socket);
+        void releaseMedia();
+        startButton.disabled = false;
+        stopButton.disabled = true;
+        modelLabel.textContent = '';
+        errorNote.hidden = !error;
+        errorNote.textContent = error ? message : '';
+        setStatus(error ? 'error' : 'ready', error ? 'Connection issue' : message);
+      }
+
+      function isModelUnavailable(message) {
+        return /model.{0,40}(not found|unsupported|not available|does not exist)|(?:unsupported|unknown|invalid).{0,30}model|model_not_found/i.test(String(message));
+      }
+
+      async function getToken(model, currentSession) {
+        const response = await fetch(`/token?model=${encodeURIComponent(model)}`, { cache: 'no-store' });
+        const data = await response.json().catch(() => ({}));
+        if (!response.ok) {
+          const error = new Error(data.detail || `Token request failed (${response.status}).`);
+          error.status = response.status;
+          throw error;
+        }
+        if (currentSession !== sessionId) throw new Error('Session was stopped.');
+        return data;
+      }
+
+      async function tryModel(models, index, currentSession, previousError = '', initialToken = null) {
+        if (currentSession !== sessionId) return;
+        if (index >= models.length) {
+          endSession(`None of the configured Gemini Live models could connect. ${previousError}`.trim(), true);
+          return;
+        }
+        const model = models[index];
+        fallbackInProgress = false;
+        sessionReady = false;
+        setStatus('connecting', index ? `Trying Live fallback ${index + 1} of ${models.length}…` : 'Connecting to Gemini Live…');
+        modelLabel.textContent = `Trying ${model}`;
+
+        let tokenData;
+        try {
+          tokenData = initialToken || await getToken(model, currentSession);
+        } catch (error) {
+          if (currentSession !== sessionId) return;
+          if (isModelUnavailable(error.message) && index + 1 < models.length) {
+            await tryModel(models, index + 1, currentSession, error.message);
+            return;
+          }
+          const detail = isModelUnavailable(error.message)
+            ? `Gemini Live model ${model} is unavailable: ${error.message}`
+            : error.message;
+          endSession(detail, true);
+          return;
+        }
+
+        if (currentSession !== sessionId) return;
+        const socketUrl = `wss://generativelanguage.googleapis.com/ws/google.ai.generativelanguage.${tokenData.apiVersion || 'v1beta'}.GenerativeService.BidiGenerateContentConstrained?access_token=${encodeURIComponent(tokenData.token)}`;
+        let socket;
+        try {
+          socket = new WebSocket(socketUrl);
+        } catch (error) {
+          endSession(`Could not open Gemini Live WebSocket: ${error.message}`, true);
+          return;
+        }
+        activeSocket = socket;
+
+        socket.onopen = () => {
+          if (currentSession !== sessionId || activeSocket !== socket) return;
+          socket.send(JSON.stringify({
+            setup: {
+              model: `models/${model}`,
+              generationConfig: {
+                responseModalities: ['AUDIO'],
+                speechConfig: { voiceConfig: { prebuiltVoiceConfig: { voiceName: tokenData.voice || 'Puck' } } }
+              },
+              systemInstruction: { parts: [{ text: systemInstruction }] },
+              inputAudioTranscription: {},
+              outputAudioTranscription: {}
+            }
+          }));
+        };
+
+        socket.onmessage = async event => {
+          if (currentSession !== sessionId || activeSocket !== socket) return;
+          let message;
+          try {
+            const payload = typeof event.data === 'string'
+              ? event.data
+              : event.data instanceof Blob
+                ? await event.data.text()
+                : event.data instanceof ArrayBuffer
+                  ? new TextDecoder().decode(event.data)
+                  : '';
+            if (!payload) return;
+            message = JSON.parse(payload);
+          } catch (_) {
+            return;
+          }
+          if (currentSession !== sessionId || activeSocket !== socket) return;
+          const serverError = message.error?.message || message.error?.status || '';
+          if (serverError && isModelUnavailable(serverError)) {
+            void fallbackFromSocket(socket, models, index, currentSession, serverError);
+            return;
+          }
+          if (message.error) {
+            endSession(`Gemini Live error: ${serverError || JSON.stringify(message.error)}`, true);
+            return;
+          }
+
+          const content = message.serverContent || {};
+          if (content.interrupted) clearPlayback();
+          if (content.inputTranscription?.text) {
+            addTranscript('You', content.inputTranscription.text, false);
+          }
+          if (content.outputTranscription?.text) {
+            if (!transcriptEntry) transcriptEntry = addTranscript('Dhanush AI', '', true, true);
+            if (transcriptEntry) {
+              transcriptEntry.textContent += content.outputTranscription.text;
+              conversation.scrollTop = conversation.scrollHeight;
+            }
+          }
+          if (content.turnComplete) transcriptEntry = null;
+          for (const part of content.modelTurn?.parts || []) {
+            const inlineData = part.inlineData || part.inline_data;
+            if (inlineData?.data) playPcm(inlineData.data, inlineData.mimeType || inlineData.mime_type || 'audio/pcm;rate=24000');
+          }
+          if (message.setupComplete) {
+            sessionReady = true;
+            modelLabel.textContent = `Connected model: ${model}`;
+            setStatus('live', 'Listening');
+            startMicrophoneStreaming(socket, currentSession).catch(error => {
+              endSession(`Microphone audio could not start: ${error.message}`, true);
+            });
+          }
+        };
+
+        socket.onerror = () => {
+          if (currentSession === sessionId && activeSocket === socket) {
+            endSession('WebSocket connection failed. Check your internet connection, API access, and browser console.', true);
+          }
+        };
+        socket.onclose = event => {
+          if (currentSession !== sessionId || activeSocket !== socket) return;
+          const reason = event.reason || `Gemini Live closed the connection (code ${event.code}).`;
+          if (!sessionReady && isModelUnavailable(reason) && index + 1 < models.length) {
+            void fallbackFromSocket(socket, models, index, currentSession, reason);
+            return;
+          }
+          endSession(reason, true);
+        };
+      }
+
+      async function fallbackFromSocket(socket, models, index, currentSession, reason) {
+        if (fallbackInProgress || currentSession !== sessionId) return;
+        fallbackInProgress = true;
+        if (activeSocket === socket) activeSocket = null;
+        closeSocket(socket);
+        clearPlayback();
+        if (index + 1 >= models.length) {
+          endSession(`None of the configured Gemini Live models are available. ${reason}`, true);
+          return;
+        }
+        await tryModel(models, index + 1, currentSession, reason);
+      }
+
+      function resampleTo16k(input, inputRate) {
+        if (inputRate === 16000) return input;
+        const outputLength = Math.max(1, Math.round(input.length * 16000 / inputRate));
+        const output = new Float32Array(outputLength);
+        const ratio = inputRate / 16000;
+        for (let index = 0; index < outputLength; index += 1) {
+          const sourceIndex = index * ratio;
+          const left = Math.floor(sourceIndex);
+          const right = Math.min(left + 1, input.length - 1);
+          const blend = sourceIndex - left;
+          output[index] = input[left] * (1 - blend) + input[right] * blend;
+        }
+        return output;
+      }
+
+      function toBase64(bytes) {
+        let binary = '';
+        const stride = 0x8000;
+        for (let index = 0; index < bytes.length; index += stride) {
+          binary += String.fromCharCode(...bytes.subarray(index, index + stride));
+        }
+        return btoa(binary);
+      }
+
+      async function startMicrophoneStreaming(socket, currentSession) {
+        if (!audioContext || !microphoneStream) throw new Error('Microphone permission is not available.');
+        await audioContext.resume();
+        if (currentSession !== sessionId) return;
+        microphoneSource = audioContext.createMediaStreamSource(microphoneStream);
+        microphoneProcessor = audioContext.createScriptProcessor(2048, 1, 1);
+        silentGain = audioContext.createGain();
+        silentGain.gain.value = 0;
+        microphoneProcessor.onaudioprocess = event => {
+          if (!sessionReady || currentSession !== sessionId || socket !== activeSocket || socket.readyState !== WebSocket.OPEN) return;
+          const samples = resampleTo16k(event.inputBuffer.getChannelData(0), audioContext.sampleRate);
+          const pcm = new Int16Array(samples.length);
+          for (let index = 0; index < samples.length; index += 1) {
+            const sample = Math.max(-1, Math.min(1, samples[index]));
+            pcm[index] = sample < 0 ? sample * 0x8000 : sample * 0x7fff;
+          }
+          socket.send(JSON.stringify({
+            realtimeInput: {
+              audio: { mimeType: 'audio/pcm;rate=16000', data: toBase64(new Uint8Array(pcm.buffer)) }
+            }
+          }));
+        };
+        microphoneSource.connect(microphoneProcessor);
+        microphoneProcessor.connect(silentGain);
+        silentGain.connect(audioContext.destination);
+      }
+
+      function playPcm(encodedAudio, mimeType) {
+        if (!audioContext) return;
+        const match = /rate=(\d+)/i.exec(mimeType);
+        const sampleRate = match ? Number(match[1]) : 24000;
+        const binary = atob(encodedAudio);
+        const samples = new Int16Array(binary.length / 2);
+        for (let index = 0; index < samples.length; index += 1) {
+          const low = binary.charCodeAt(index * 2);
+          const high = binary.charCodeAt(index * 2 + 1);
+          let value = (high << 8) | low;
+          if (value >= 0x8000) value -= 0x10000;
+          samples[index] = value;
+        }
+        if (!samples.length) return;
+        const buffer = audioContext.createBuffer(1, samples.length, sampleRate);
+        const channel = buffer.getChannelData(0);
+        for (let index = 0; index < samples.length; index += 1) channel[index] = samples[index] / 32768;
+        const source = audioContext.createBufferSource();
+        source.buffer = buffer;
+        source.connect(audioContext.destination);
+        const startAt = Math.max(audioContext.currentTime + 0.015, scheduledUntil);
+        scheduledUntil = startAt + buffer.duration;
+        scheduledAudio.add(source);
+        source.onended = () => {
+          scheduledAudio.delete(source);
+          if (scheduledAudio.size === 0) orbWrap.classList.remove('is-speaking');
+        };
+        orbWrap.classList.add('is-speaking');
+        source.start(startAt);
+      }
+
+      async function startSession() {
+        if (startButton.disabled) return;
+        const currentSession = ++sessionId;
+        startButton.disabled = true;
+        stopButton.disabled = false;
+        errorNote.hidden = true;
+        errorNote.textContent = '';
+        modelLabel.textContent = '';
+        transcriptEntry = null;
+        setStatus('connecting', 'Requesting microphone access…');
+        try {
+          if (!navigator.mediaDevices?.getUserMedia) {
+            throw new Error('This browser does not provide microphone access. Open the app in current Chrome or Edge at localhost.');
+          }
+          const stream = await navigator.mediaDevices.getUserMedia({ audio: { channelCount: 1, echoCancellation: true, noiseSuppression: true, autoGainControl: true } });
+          if (currentSession !== sessionId) {
+            stream.getTracks().forEach(track => track.stop());
+            return;
+          }
+          microphoneStream = stream;
+          audioContext = new AudioContext();
+          await audioContext.resume();
+          setStatus('connecting', 'Getting a secure Gemini Live session…');
+          const firstToken = await getToken('', currentSession);
+          if (currentSession !== sessionId) return;
+          await tryModel(firstToken.models, 0, currentSession, '', firstToken);
+        } catch (error) {
+          if (currentSession === sessionId) endSession(error.message, true);
+        }
+      }
+
+      startButton.addEventListener('click', startSession);
+      stopButton.addEventListener('click', () => endSession('Session stopped'));
+      window.addEventListener('pagehide', () => {
+        sessionId += 1;
+        closeSocket(activeSocket);
+        if (microphoneStream) microphoneStream.getTracks().forEach(track => track.stop());
+      });
+    })();
+  </script>
+</body>
+</html>
